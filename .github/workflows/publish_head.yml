@@ -27,27 +27,41 @@ jobs:
         with:
           python-version: "3.x"
 
+      # ✅ Generate a weekly cache key
+      - name: Generate Cache Key
+        run: echo "cache_id=mkdocs-material-$(date --utc '+%V')" >> $GITHUB_ENV
+
+      # ✅ Restore cached dependencies (if available)
       - name: Restore Cached Dependencies
         uses: actions/cache@v4
         with:
           key: mkdocs-material-${{ env.cache_id }}
-          path: .cache
+          path: ~/.cache/pip  # ✅ Correct pip cache path
           restore-keys: |
             mkdocs-material-
 
+      # ✅ Install mkdocs-material and mike
       - name: Install mkdocs-material and mike
         run: |
           python -m pip install --upgrade pip
           pip install --disable-pip-version-check -r requirements.txt
+          mkdir -p ~/.cache/pip  # ✅ Ensure cache directory exists
+
+      # ✅ Check if gh-pages branch exists
+      - name: Check and initialize gh-pages if missing
+        id: check_branch
+        run: |
+          if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+            echo "✅ gh-pages branch already exists. Proceeding with deployment..."
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "🚀 gh-pages branch is missing. Will initialize using init_docs.yml..."
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        
+      - name: Run init_docs Reusable Workflow if gh-pages is missing
+        if: steps.check_branch.outputs.exists == 'false'
+        run: mkdocs gh-deploy
 
       - name: Deploy HEAD
-        run: |
-          git fetch origin gh-pages
-          if git show-ref --quiet refs/heads/gh-pages; then
-            git checkout gh-pages
-            git pull origin gh-pages --rebase
-            git checkout main
-          fi
-      
-          mike deploy head --push
-          # mike set-default head --push
+        run: mike deploy head --push
