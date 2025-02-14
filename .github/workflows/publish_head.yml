@@ -27,41 +27,41 @@ jobs:
         with:
           python-version: "3.x"
 
-      # ✅ Generate a weekly cache key
-      - name: Generate Cache Key
-        run: echo "cache_id=mkdocs-material-$(date --utc '+%V')" >> $GITHUB_ENV
-
-      # ✅ Restore cached dependencies (if available)
-      - name: Restore Cached Dependencies
+      - name: Check for existing cache
+        id: check-cache
         uses: actions/cache@v4
         with:
           key: mkdocs-material-${{ env.cache_id }}
-          path: ~/.cache/pip  # ✅ Correct pip cache path
+          path: ~/.cache/pip
           restore-keys: |
             mkdocs-material-
 
-      # ✅ Install mkdocs-material and mike
-      - name: Install mkdocs-material and mike
-        run: |
-          python -m pip install --upgrade pip
-          pip install --disable-pip-version-check -r requirements.txt
-          mkdir -p ~/.cache/pip  # ✅ Ensure cache directory exists
+      - name: Generate Cache Key if missing
+        if: steps.check-cache.outputs.cache-hit != 'true'
+        run: echo "cache_id=mkdocs-material-$(date --utc '+%V')" >> $GITHUB_ENV
 
-      # ✅ Check if gh-pages branch exists
+      - name: Install dependencies (if cache is missing)
+        if: steps.check-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "🔍 Cache not found. Installing dependencies..."
+          python -m pip install --upgrade pip
+          pip install --disable-pip-version-check -r requirements.txt mike
+          mkdir -p ~/.cache/pip
+
       - name: Check and initialize gh-pages if missing
         id: check_branch
         run: |
           if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
-            echo "✅ gh-pages branch already exists. Proceeding with deployment..."
+            echo "✅ gh-pages branch already exists. Deploying docs with mike"
             echo "exists=true" >> $GITHUB_OUTPUT
           else
-            echo "🚀 gh-pages branch is missing. Will initialize using init_docs.yml..."
+            echo "🚀 gh-pages branch is missing. Initialising docs with mkdocs..."
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
-        
+
       - name: Run init_docs Reusable Workflow if gh-pages is missing
         if: steps.check_branch.outputs.exists == 'false'
         run: mkdocs gh-deploy
 
-      - name: Deploy HEAD
+      - name: Deploy latest changes from main branch (head)
         run: mike deploy head --push
