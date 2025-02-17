@@ -8,6 +8,7 @@
 
 20:15
 
+16:15
 
 k0rdent has been developed to provide a way to manage distributed infrastructure
 at massive scale leveraging kubernetes.
