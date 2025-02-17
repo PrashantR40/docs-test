@@ -31,7 +31,6 @@ jobs:
         run: echo "cache_id=mkdocs-material-$(date --utc '+%V')" >> $GITHUB_ENV
 
       - name: Restore Cached Dependencies
-        id: cache-deps
         uses: actions/cache@v4
         with:
           key: mkdocs-material-${{ env.cache_id }}
@@ -39,10 +38,8 @@ jobs:
           restore-keys: |
             mkdocs-material-
 
-      - name: Install dependencies (if cache is missing)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
+      - name: Install mkdocs and dependencies
         run: |
-          echo "🔍 Cache not found. Installing dependencies..."
           python -m pip install --upgrade pip
           pip install --disable-pip-version-check -r requirements.txt
           mkdir -p ~/.cache/pip
@@ -51,16 +48,16 @@ jobs:
         id: check_branch
         run: |
           if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
-            echo "✅ gh-pages branch already exists. Deploying docs with mike"
+            echo "✅ gh-pages branch already exists. Proceeding with deployment..."
             echo "exists=true" >> $GITHUB_OUTPUT
           else
-            echo "🚀 gh-pages branch is missing. Initialising docs with mkdocs..."
+            echo "🚀 gh-pages branch is missing. Will initialize using init_docs.yml..."
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Run init_docs Reusable Workflow if gh-pages is missing
+        
+      - name: Init docs as gh-pages is missing
         if: steps.check_branch.outputs.exists == 'false'
         run: mkdocs gh-deploy
 
-      - name: Deploy latest changes from main branch (head)
+      - name: Deploy to main branch (head)
         run: mike deploy head --push
