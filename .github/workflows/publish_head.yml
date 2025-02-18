@@ -27,7 +27,6 @@ jobs:
         with:
           python-version: "3.x"
           cache: pip
-          cache-dependency-path: requirements.txt
         
       - name: Install mkdocs and dependencies
         run: |
@@ -39,10 +38,10 @@ jobs:
         id: check_branch
         run: |
           if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
-            echo "✅ gh-pages branch already exists. Proceeding with deployment..."
+            echo "✅ gh-pages branch already exists. Proceeding with deployment with mike..."
             echo "exists=true" >> $GITHUB_OUTPUT
           else
-            echo "🚀 gh-pages branch is missing. Will initialize using init_docs.yml..."
+            echo "🚀 gh-pages branch is missing. Will init the docs with mkdocs..."
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
         
